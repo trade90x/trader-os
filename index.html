@@ -354,8 +354,8 @@ html,body{height:100%;overflow:hidden;background:var(--bg0);font-family:'DM Sans
     <div class="lerr" id="lerr"></div>
     <div class="lok" id="lok"></div>
     <div class="lf" id="lf-name" style="display:none"><label>Full name</label><input type="text" id="l-name" placeholder="Your name"></div>
-    <div class="lf"><label>Email</label><input type="email" id="l-email" placeholder="you@example.com" onkeydown="if(event.key==='Enter')lgo()"></div>
-    <div class="lf"><label>Password <a href="#" onclick="_lforgot();return false" style="font-size:11px;color:#bee825;text-decoration:none">Forgot?</a></label><input type="password" id="l-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')lgo()"></div>
+    <div class="lf"><label>Email</label><input type="email" id="l-email" placeholder="you@example.com" onkeydown="if(event.key==='Enter')_lgo()"></div>
+    <div class="lf"><label>Password <a href="#" onclick="_lforgot();return false" style="font-size:11px;color:#bee825;text-decoration:none">Forgot?</a></label><input type="password" id="l-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')_lgo()"></div>
     <button class="lbtn" id="lbtn" onclick="_lgo()">Sign In</button>
     <button class="lskip" onclick="_lenter()">Try Demo — No account needed</button>
   </div>
@@ -1644,6 +1644,130 @@ For support: support@trade90x.com')">?</div></div>
 :.1em;margin-bottom:4px">Available after 30 days of data</div><div style="font-size:22px;font-weight:900;color:#bee825">Elite Plan</div></div><br><button onclick="alert('Elite plan — coming Q2 2026')" style="background:#bee825;color:#000;border:none;border-radius:8px;padding:12px 28px;font-weight:700;font-size:14px;cursor:pointer;font-family:inherit">Upgrade to Elite →</button></div></div>
 </div>
 s.data.session){_u=s.data.session.user;_lenter();}
+  }catch(e){console.log(e);}
+});
+</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+var _sb=supabase.createClient('https://bcrocnmullhtkpohggkn.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjcm9jbm11bGxodGtwb2hnZ2tuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzNjc3NTksImV4cCI6MjA5MDk0Mzc1OX0.SHKYOWjWIhhUzdvvqiur5mJ4N85_FWLKek2Ft66V-VI');
+var _u=null,_appIn=false;
+
+function _loginTab(t){
+  ['si','reg'].forEach(function(x){document.getElementById('lt-'+x).className='ltab'+(x===t?' on':'');});
+  var b=document.getElementById('lbtn');
+  if(b){b.textContent=t==='si'?'Sign In':'Create Account';b.dataset.m=t;}
+  document.getElementById('lerr').textContent='';
+  document.getElementById('lok').textContent='';
+  var nf=document.getElementById('lf-name');
+  if(nf) nf.style.display=t==='reg'?'block':'none';
+}
+
+function _lforgot(){
+  document.querySelector('.lb').style.display='none';
+  document.getElementById('lforgot-box').style.display='block';
+}
+
+async function _lresetpw(){
+  var e=document.getElementById('f-email').value.trim();
+  if(!e){document.getElementById('ferr').textContent='Enter your email.';return;}
+  var r=await _sb.auth.resetPasswordForEmail(e,{redirectTo:'https://trade90x.github.io/trader-os'});
+  if(r.error)document.getElementById('ferr').textContent=r.error.message;
+  else document.getElementById('fok').textContent='Reset link sent!';
+}
+
+async function _lgo(){
+  var email=document.getElementById('l-email').value.trim();
+  var pass=document.getElementById('l-pass').value;
+  var b=document.getElementById('lbtn');
+  var m=b?b.dataset.m||'si':'si';
+  var err=document.getElementById('lerr');
+  var ok=document.getElementById('lok');
+  err.textContent='';ok.textContent='';
+  if(!email||!pass){err.textContent='Please enter email and password.';return;}
+  if(pass.length<6){err.textContent='Password must be at least 6 characters.';return;}
+  if(b){b.disabled=true;b.textContent=m==='si'?'Signing in...':'Creating account...';}
+  var r;
+  if(m==='si'){r=await _sb.auth.signInWithPassword({email:email,password:pass});}
+  else{
+    var nm=document.getElementById('l-name');
+    r=await _sb.auth.signUp({email:email,password:pass,options:{data:{full_name:nm?nm.value.trim():''}}});
+  }
+  if(b){b.disabled=false;b.textContent=m==='si'?'Sign In':'Create Account';}
+  if(r.error){err.textContent=r.error.message;return;}
+  if(m==='reg'&&r.data&&!r.data.session){ok.textContent='Account created! Sign in now.';return;}
+  if(r.data&&r.data.user){_u=r.data.user;_lenter();}
+}
+
+function _lenter(){
+  if(_appIn)return;
+  _appIn=true;
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('app-shell').style.display='';
+  if(_u){
+    var meta=_u.user_metadata||{};
+    var name=meta.full_name||_u.email.split('@')[0]||'Trader';
+    name=name.charAt(0).toUpperCase()+name.slice(1);
+    var nameEl=document.getElementById('user-name');
+    if(nameEl)nameEl.textContent=name;
+    var av=document.getElementById('uav');
+    if(av)av.textContent=name[0].toUpperCase();
+    var em=document.getElementById('umenu-email');
+    if(em)em.textContent=_u.email||'';
+    _loaddb();
+  }
+}
+
+async function _lout(){
+  if(!confirm('Sign out?'))return;
+  await _sb.auth.signOut();
+  _u=null;_appIn=false;
+  document.getElementById('app-shell').style.display='none';
+  document.getElementById('login-screen').classList.remove('hidden');
+  document.getElementById('l-email').value='';
+  document.getElementById('l-pass').value='';
+}
+
+function utoggle(){
+  var m=document.getElementById('umenu');
+  if(m)m.style.display=m.style.display==='none'?'block':'none';
+}
+document.addEventListener('click',function(e){
+  var av=document.getElementById('uav'),mn=document.getElementById('umenu');
+  if(av&&mn&&!av.contains(e.target)&&!mn.contains(e.target))mn.style.display='none';
+});
+
+async function _loaddb(){
+  if(!_u)return;
+  var today=new Date().toISOString().split('T')[0];
+  var tr=await _sb.from('trade_logs').select('*').eq('user_id',_u.id).gte('logged_at',today+'T00:00:00').order('logged_at',{ascending:false});
+  if(tr.data&&tr.data.length>0){
+    tradeLog=tr.data.map(function(t){return{time:new Date(t.logged_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),sym:t.instrument||'—',dir:t.direction||'Long',entry:'—',exit:'—',pnl:parseFloat(t.pnl)||0,tag:t.tag||'rule-compliant',emotion:t.emotion||'Neutral',onPlan:t.on_plan!==false};});
+    if(typeof rebuildDashTable==='function')rebuildDashTable();
+    if(typeof rebuildFullLogTable==='function')rebuildFullLogTable();
+  }
+  var rd=await _sb.from('readiness_checks').select('*').eq('user_id',_u.id).gte('checked_at',today+'T00:00:00').order('checked_at',{ascending:false}).limit(1).maybeSingle();
+  var pill=document.getElementById('header-pill');
+  if(rd.data&&pill){pill.textContent=rd.data.tier+' · '+rd.data.score+'/100';pill.className='readiness-pill pill-'+(rd.data.tier||'green').toLowerCase();}
+  else if(pill){pill.textContent='Check pending';pill.className='readiness-pill pill-amber';}
+  var yd=await _sb.from('session_summaries').select('*').eq('user_id',_u.id).order('session_date',{ascending:false}).limit(1).maybeSingle();
+  var pEl=document.getElementById('yd-pnl'),cEl=document.getElementById('yd-comp'),tEl=document.getElementById('yd-trades'),lEl=document.getElementById('yd-lastred');
+  if(yd.data){
+    var p=parseFloat(yd.data.total_pnl)||0,c=Math.round(yd.data.compliance_score)||0;
+    if(pEl){pEl.textContent=(p>=0?'+$':'-$')+Math.abs(p).toFixed(0);pEl.style.color=p>=0?'var(--green)':'var(--red)';}
+    if(cEl){cEl.textContent=c+'%';cEl.style.color=c>=80?'var(--green)':'var(--amber)';}
+    if(tEl)tEl.textContent=(yd.data.trade_count||0)+'/5';
+    if(lEl)lEl.textContent='Last session: '+yd.data.session_date;
+  }else{
+    if(pEl)pEl.textContent='—';if(cEl)cEl.textContent='—';if(tEl)tEl.textContent='—';
+    if(lEl)lEl.textContent='Complete your first session to see stats';
+  }
+}
+
+document.addEventListener('DOMContentLoaded',async function(){
+  var b=document.getElementById('lbtn');if(b)b.dataset.m='si';
+  try{
+    var s=await _sb.auth.getSession();
+    if(s.data&&s.data.session){_u=s.data.session.user;_lenter();}
   }catch(e){console.log(e);}
 });
 </script>
